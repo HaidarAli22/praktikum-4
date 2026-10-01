@@ -1,0 +1,723 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <title>AI Scanner</title>
+
+    <style>
+      :root {
+        --bg: #000000;
+        --bg-card: #0a0a0a;
+        --surface: #111111;
+        --surface-2: #171717;
+        --text: #ffffff;
+        --text-main: #ffffff;
+        --text-muted: #a3a3a3;
+        --border: #333333;
+        --border-light: #525252;
+        --primary: #ffffff;
+        --dark-gray: #262626;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        padding: 24px 16px;
+        font-family: Arial, Helvetica, sans-serif;
+        background: var(--bg);
+        color: var(--text);
+        min-height: 100vh;
+      }
+
+      .container {
+        max-width: 900px;
+        margin: 0 auto;
+      }
+
+      h1 {
+        margin: 0 0 16px;
+        font-size: 28px;
+        color: var(--text);
+        text-align: center;
+        letter-spacing: 0.5px;
+      }
+
+      #camera-container {
+        position: relative;
+        width: 100%;
+        aspect-ratio: 16 / 9;
+        background: #000000;
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        overflow: hidden;
+      }
+
+      #video {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+        background: #000000;
+      }
+
+      #canvas {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+      }
+
+      #overlay-msg {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.8);
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        color: white;
+        z-index: 5;
+        text-align: center;
+        padding: 20px;
+      }
+
+      #overlay-text {
+        margin: 0;
+        color: var(--text);
+        font-size: 14px;
+        line-height: 1.5;
+      }
+
+      .spinner {
+        width: 38px;
+        height: 38px;
+        border: 4px solid rgba(255, 255, 255, 0.18);
+        border-top-color: var(--text);
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        margin-bottom: 10px;
+      }
+
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+
+      .controls {
+        display: flex;
+        justify-content: center;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 14px;
+      }
+
+      button,
+      .btn {
+        border: 1px solid var(--border-light);
+        background: var(--surface-2);
+        color: var(--text);
+        border-radius: 10px;
+        padding: 10px 14px;
+        font-size: 14px;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.2s ease;
+      }
+
+      button:hover,
+      .btn:hover {
+        background: var(--dark-gray);
+        border-color: #8a8a8a;
+        transform: translateY(-1px);
+      }
+
+      button:active,
+      .btn:active {
+        transform: translateY(0);
+      }
+
+      .btn-success {
+        background: var(--primary);
+        color: #000000;
+        border-color: var(--primary);
+      }
+      .btn-success:hover {
+        background: #e5e5e5;
+        border-color: #e5e5e5;
+      }
+
+      .btn-danger {
+        background: #404040;
+        color: var(--text);
+        border-color: #525252;
+      }
+      .btn-danger:hover {
+        background: #525252;
+        border-color: #6b6b6b;
+      }
+
+      #data-section {
+        width: 100%;
+        background: var(--bg-card);
+        border-radius: 12px;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        border: 1px solid var(--border);
+        min-height: 150px;
+        margin-top: 16px;
+      }
+
+      #data-header {
+        padding: 12px 16px;
+        border-bottom: 1px solid var(--border);
+        font-weight: 700;
+        font-size: 14px;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background: var(--surface);
+      }
+
+      #log-count {
+        color: var(--text-muted);
+        font-weight: 600;
+      }
+
+      #data-list {
+        flex: 1;
+        overflow-y: auto;
+        padding: 8px;
+        max-height: 420px;
+      }
+
+      #data-list::-webkit-scrollbar {
+        width: 8px;
+      }
+      #data-list::-webkit-scrollbar-track {
+        background: #0a0a0a;
+      }
+      #data-list::-webkit-scrollbar-thumb {
+        background: #404040;
+        border-radius: 999px;
+      }
+      #data-list::-webkit-scrollbar-thumb:hover {
+        background: #525252;
+      }
+
+      .log-item {
+        padding: 10px 12px;
+        background: var(--surface);
+        border: 1px solid #262626;
+        border-left: 4px solid var(--primary);
+        border-radius: 8px;
+        margin-bottom: 8px;
+        font-size: 13px;
+        color: var(--text);
+        transition: all 0.2s ease;
+      }
+      .log-item:hover {
+        background: var(--surface-2);
+        border-color: #3f3f3f;
+      }
+
+      .log-item .time {
+        color: var(--text-muted);
+        font-size: 11px;
+        display: block;
+        margin-bottom: 4px;
+      }
+      .log-item .items {
+        font-weight: 600;
+        color: var(--text-main);
+        word-break: break-word;
+      }
+
+      .empty-state {
+        text-align: center;
+        color: var(--text-muted);
+        padding: 30px;
+        font-size: 14px;
+        border: 1px dashed var(--border-light);
+        border-radius: 10px;
+        background: rgba(255, 255, 255, 0.02);
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="container">
+      <h1>AI Scanner</h1>
+
+      <!-- MODUL 2: Struktur HTML untuk Kamera & Overlay -->
+      <div id="camera-container">
+        <video id="video" autoplay playsinline muted></video>
+        <canvas id="canvas"></canvas>
+
+        <div id="overlay-msg">
+          <div class="spinner"></div>
+          <p id="overlay-text">Memulai Sistem...</p>
+        </div>
+      </div>
+
+      <!-- Tombol sesuai tugas Modul 2 dan Modul 3 -->
+      <div class="controls">
+        <button id="btnStartCamera" class="btn btn-success">
+          Start Camera
+        </button>
+        <button id="btnStopCamera" class="btn btn-danger">Stop Camera</button>
+        <button id="btnAI" class="btn btn-success">Start AI</button>
+      </div>
+
+      <!-- MODUL 4: HTML Section untuk log deteksi -->
+      <div id="data-section">
+        <div id="data-header">
+          <span>Detected Objects Log</span>
+          <span id="log-count">0 items</span>
+        </div>
+
+        <div id="data-list">
+          <div class="empty-state">Menunggu deteksi objek...</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Firebase SDK gaya compat sesuai kode Modul 2 -->
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+
+    <!-- TensorFlow.js dan COCO-SSD sesuai Modul 3 -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.20.0/dist/tf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.3/dist/coco-ssd.min.js"></script>
+
+    <script>
+      /* ==========================================================
+       MODUL 2: SETUP DATABASE & AKSES KAMERA
+       ========================================================== */
+
+      const firebaseConfig = {
+        apiKey: "AIzaSyAcBrtwzjTeW5vjGknSCkYrb-o2MxQbJGo",
+        authDomain: "praktikum-4-121d1.firebaseapp.com",
+        projectId: "praktikum-4-121d1",
+        storageBucket: "praktikum-4-121d1.firebasestorage.app",
+        messagingSenderId: "111527697440",
+        appId: "1:111527697440:web:a652fd29b8021336d7b045",
+      };
+
+      let db;
+      let isMockMode = true;
+
+      class MockFirestore {
+        constructor() {
+          this.data = JSON.parse(
+            localStorage.getItem("mock_inventory_db") || "[]",
+          );
+          this.listeners = [];
+        }
+        collection() {
+          return this;
+        }
+        async add(payload) {
+          const doc = {
+            ...payload,
+            id: Date.now().toString(),
+            timestamp: { toDate: () => new Date() },
+          };
+          this.data.unshift(doc);
+          if (this.data.length > 50) this.data.pop();
+          localStorage.setItem("mock_inventory_db", JSON.stringify(this.data));
+          this.listeners.forEach((cb) => cb(this.data));
+          return Promise.resolve();
+        }
+        orderBy() {
+          return this;
+        }
+        limit() {
+          return this;
+        }
+        onSnapshot(cb) {
+          this.listeners.push(cb);
+          cb(this.data);
+          return () => {};
+        }
+      }
+
+      if (firebaseConfig.apiKey && firebaseConfig.projectId) {
+        try {
+          firebase.initializeApp(firebaseConfig);
+          db = firebase.firestore();
+          isMockMode = false;
+        } catch (e) {
+          console.error("Firebase init error", e);
+        }
+      }
+
+      if (isMockMode) {
+        db = new MockFirestore();
+      }
+
+      const collectionRef = db.collection("inventory_logs");
+
+      function showOverlay(title, text) {
+        const overlay = document.getElementById("overlay-msg");
+        const overlayText = document.getElementById("overlay-text");
+        overlayText.textContent = title + " " + text;
+        overlay.style.display = "flex";
+      }
+      function hideOverlay() {
+        document.getElementById("overlay-msg").style.display = "none";
+      }
+      function showToast(message) {
+        console.log(message);
+      }
+
+      const video = document.getElementById("video");
+      const canvas = document.getElementById("canvas");
+      const ctx = canvas.getContext("2d");
+      const btnAI = document.getElementById("btnAI");
+
+      let isCameraOn = false;
+      let isAIDetecting = false;
+      let model = null;
+
+      async function startCamera() {
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({
+            video: {
+              facingMode: "environment",
+              width: { ideal: 1280 },
+              height: { ideal: 720 },
+            },
+            audio: false,
+          });
+
+          video.srcObject = stream;
+
+          await new Promise((resolve) => {
+            video.onloadedmetadata = () => {
+              console.log(
+                "Resolusi kamera:",
+                video.videoWidth,
+                "x",
+                video.videoHeight,
+              );
+              canvas.width = video.videoWidth;
+              canvas.height = video.videoHeight;
+              resolve();
+            };
+          });
+
+          isCameraOn = true;
+          console.log("Kamera berhasil dinyalakan!");
+        } catch (err) {
+          console.error("Gagal akses kamera:", err);
+          alert(
+            "Akses kamera ditolak. Pastikan izin kamera diizinkan di browser.",
+          );
+        }
+      }
+
+      function stopCamera() {
+        if (video.srcObject) {
+          video.srcObject.getTracks().forEach((track) => track.stop());
+          video.srcObject = null;
+        }
+        isCameraOn = false;
+        isAIDetecting = false;
+        resetStability();
+        btnAI.textContent = "Start AI";
+        btnAI.className = "btn btn-success";
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+      }
+
+      /* ==========================================================
+       MODUL 3: OBJECT DETECTION DENGAN COCO-SSD
+       ========================================================== */
+
+      async function loadModel() {
+        showOverlay(
+          "Memuat Model AI (COCO-SSD)...",
+          "Mengunduh bobot model. Mohon tunggu.",
+        );
+
+        try {
+          // mobilenet_v2 = lebih AKURAT (sesuai tabel Modul 3), trade-off FPS sedikit turun.
+          // Kalau mau balik ke tercepat, ganti ke 'lite_mobilenet_v2'.
+          model = await cocoSsd.load({ base: "mobilenet_v2" });
+
+          hideOverlay();
+          showToast("Model AI siap digunakan!");
+          console.log("Model berhasil dimuat:", model);
+        } catch (err) {
+          console.error("Gagal memuat model:", err);
+          showOverlay(
+            "Gagal Memuat Model AI",
+            "Periksa koneksi internet Anda. Model perlu diunduh pertama kali.",
+          );
+        }
+      }
+
+      // Kelas target. CATATAN: COCO TIDAK punya 'watch'/'wristwatch'.
+      // 'clock' = jam (dinding/meja) -> proxy terdekat untuk jam tangan.
+      // Untuk jam tangan SEJATI perlu custom model (lihat Modul 4: "Train model custom").
+      const TARGET_CLASSES = [
+        "person",
+        "laptop",
+        "cell phone", // HP
+        "mouse",
+        "keyboard",
+        "book", // buku
+        "clock", // jam (proxy jam tangan)
+        "scissors",
+        "pen",
+        "remote",
+        "tvmonitor",
+        "bottle",
+        "cup",
+      ];
+
+      const CONFIDENCE_THRESHOLD = 0.6;
+
+      /* ---------- LOGIKA AKURASI: STABILITY WINDOW ----------
+       Objek baru dianggap "pasti" kalau muncul >= MIN_HITS dari
+       WINDOW frame terakhir di atas threshold. Ini membunuh
+       false-positive kedip & bikin deteksi banyak objek stabil. */
+      const STABILITY_WINDOW = 6;
+      const STABILITY_MIN_HITS = 4;
+      let detHistory = new Map(); // class -> [score per frame]
+
+      function resetStability() {
+        detHistory = new Map();
+      }
+
+      function registerFrame(predictions) {
+        // score maksimum per class untuk frame ini
+        const frameScores = new Map();
+        predictions.forEach((p) => {
+          if (!TARGET_CLASSES.includes(p.class)) return;
+          const cur = frameScores.get(p.class) || 0;
+          if (p.score > cur) frameScores.set(p.class, p.score);
+        });
+
+        // update history SEMUA class target (0 kalau tidak muncul frame ini)
+        TARGET_CLASSES.forEach((cls) => {
+          const arr = detHistory.get(cls) || [];
+          arr.push(frameScores.get(cls) || 0);
+          while (arr.length > STABILITY_WINDOW) arr.shift();
+          detHistory.set(cls, arr);
+        });
+      }
+
+      function computeStable() {
+        const stableSet = new Set();
+        const stableMax = new Map();
+        detHistory.forEach((arr, cls) => {
+          const hits = arr.filter((s) => s > CONFIDENCE_THRESHOLD).length;
+          if (hits >= STABILITY_MIN_HITS) {
+            stableSet.add(cls);
+            stableMax.set(cls, Math.max(...arr));
+          }
+        });
+        return { stableSet, stableMax };
+      }
+
+      /* ==========================================================
+       MODUL 4: INTEGRASI DATABASE & REAL-TIME LOG
+       ========================================================== */
+
+      let lastSaveTime = 0;
+      const SAVE_THROTTLE_MS = 3000;
+
+      async function detectLoop() {
+        if (!isAIDetecting || !isCameraOn) return;
+
+        const predictions = await model.detect(video);
+
+        // 1. update riwayat stabilitas
+        registerFrame(predictions);
+        const { stableSet, stableMax } = computeStable();
+
+        // 2. bersihkan canvas
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        const detectedTargets = [];
+        const savedClasses = new Set();
+
+        // 3. gambar semua prediksi dengan 3 tingkat monokrom
+        predictions.forEach((pred) => {
+          const [x, y, w, h] = pred.bbox;
+          const isTarget = TARGET_CLASSES.includes(pred.class);
+          const confidence = pred.score;
+          const isStable = isTarget && stableSet.has(pred.class);
+
+          if (isStable) {
+            // PUTIH = sudah stabil (akurat)
+            ctx.strokeStyle = "#ffffff";
+            ctx.lineWidth = 3;
+            ctx.strokeRect(x, y, w, h);
+
+            const label = `${pred.class} ${(confidence * 100).toFixed(0)}%`;
+            ctx.font = "bold 14px sans-serif";
+            const textWidth = ctx.measureText(label).width;
+            ctx.fillStyle = "#ffffff";
+            ctx.fillRect(x, y - 25, textWidth + 10, 25);
+            ctx.fillStyle = "#000000";
+            ctx.fillText(label, x + 5, y - 7);
+
+            // agregasi: satu class cuma dicatat sekali (ambil max window)
+            if (!savedClasses.has(pred.class)) {
+              savedClasses.add(pred.class);
+              detectedTargets.push({
+                class: pred.class,
+                confidence: parseFloat(
+                  (stableMax.get(pred.class) * 100).toFixed(2),
+                ),
+              });
+            }
+          } else if (isTarget) {
+            // ABU-TERANG = kandidat (target tapi belum yakin)
+            ctx.strokeStyle = "#a3a3a3";
+            ctx.lineWidth = 2;
+            ctx.strokeRect(x, y, w, h);
+          } else {
+            // ABU-GELAP = bukan target
+            ctx.strokeStyle = "#525252";
+            ctx.lineWidth = 1;
+            ctx.strokeRect(x, y, w, h);
+          }
+        });
+
+        // 4. THROTTLING: hanya simpan jika sudah lewat 3 detik
+        if (
+          detectedTargets.length > 0 &&
+          Date.now() - lastSaveTime > SAVE_THROTTLE_MS
+        ) {
+          saveToDatabase(detectedTargets);
+          lastSaveTime = Date.now();
+        }
+
+        requestAnimationFrame(detectLoop);
+      }
+
+      async function saveToDatabase(data) {
+        try {
+          const itemsString = data
+            .map((d) => `${d.class} (${d.confidence}%)`)
+            .join(", ");
+
+          const payload = {
+            items: itemsString,
+            count: data.length,
+            device_id: "BROWSER-TEST",
+            timestamp: isMockMode
+              ? new Date().toISOString()
+              : firebase.firestore.FieldValue.serverTimestamp(),
+          };
+
+          await collectionRef.add(payload);
+
+          showToast(`Tersimpan: ${data.length} objek`);
+          console.log("Data tersimpan:", payload);
+        } catch (err) {
+          console.error("Gagal menyimpan ke database:", err);
+        }
+      }
+
+      function listenToDatabase() {
+        collectionRef
+          .orderBy("timestamp", "desc")
+          .limit(30)
+          .onSnapshot((snapshot) => {
+            const dataList = document.getElementById("data-list");
+            dataList.innerHTML = "";
+
+            let count = 0;
+            const docs = isMockMode ? snapshot : snapshot.docs;
+
+            docs.forEach((doc) => {
+              count++;
+              const data = isMockMode ? doc : doc.data();
+
+              let timeStr;
+              if (data.timestamp) {
+                const date = isMockMode
+                  ? new Date(data.timestamp)
+                  : data.timestamp.toDate();
+                timeStr = date.toLocaleTimeString("id-ID");
+              } else {
+                timeStr = "Baru saja";
+              }
+
+              const div = document.createElement("div");
+              div.className = "log-item";
+              div.innerHTML = `
+              <span class="time">${timeStr}</span>
+              <span class="items">${data.items}</span>
+            `;
+              dataList.appendChild(div);
+            });
+
+            document.getElementById("log-count").textContent = `${count} items`;
+
+            if (count === 0) {
+              dataList.innerHTML = `
+              <div class="empty-state">
+                Belum ada objek terdeteksi
+              </div>
+            `;
+            }
+          });
+      }
+
+      /* ==========================================================
+       EVENT LISTENER TOMBOL
+       ========================================================== */
+
+      document
+        .getElementById("btnStartCamera")
+        .addEventListener("click", startCamera);
+      document
+        .getElementById("btnStopCamera")
+        .addEventListener("click", stopCamera);
+
+      btnAI.addEventListener("click", () => {
+        if (!isAIDetecting) {
+          resetStability(); // mulai window fresh
+          isAIDetecting = true;
+          btnAI.textContent = "Stop AI";
+          btnAI.className = "btn btn-danger";
+          detectLoop();
+        } else {
+          isAIDetecting = false;
+          btnAI.textContent = "Start AI";
+          btnAI.className = "btn btn-success";
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+      });
+
+      /* ==========================================================
+       MODUL 4: INTEGRASI AKHIR
+       ========================================================== */
+
+      function initApp() {
+        console.log("Memulai inisialisasi aplikasi...");
+        listenToDatabase();
+        loadModel();
+        console.log("Inisialisasi selesai!");
+      }
+
+      document.addEventListener("DOMContentLoaded", initApp);
+    </script>
+  </body>
+</html>
